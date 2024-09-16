@@ -185,39 +185,36 @@ def rag(text, db):
 
     '''
 
-    # FIXME:
-    # Implement this function.
-    # Recall that your RAG system should:
     # 1. Extract keywords from the text.
     keywords = extract_keywords(text)
+    print('keywords:', keywords)
     # 2. Use those keywords to find articles related to the text.
     articles = db.find_articles(keywords)
-    # get summaries of the articles using summarize_text() and add them to the articles object
+    # get english translations of the articles using translate_text() and add them to the articles object
+    # TODO add concurrency
     for article in articles:
-        article['summary'] = summarize_text(article['text'])
+        article['translation'] = translate_text(article['text'])
     # 3. Construct a new user prompt that includes all of the articles and the original text.
-    # create a formatted string that includes the title, publish_datem summaries, urls of the articles
-    # TODO check indentation
-    article_template = '''
-    {title}
-    Publish Date: {publish_date}
-    Summary: {summary}
-    Source: {url}
-    '''
+    # create a formatted string that includes the title, publish_date, translation, urls of the articles
+    article_template = (
+        "<article>\n"
+        "  <title>{title}</title>\n"
+        "  <publish_date>{publish_date}</publish_date>\n"
+        "  <text>{translation}</text>\n"
+        "  <source>{url}</source>\n"
+        "</article>\n"
+    )
     articles_str = '\n'.join([article_template.format(**article) for article in articles])
     # 4. Pass the new prompt to the LLM and return the result.
-    # TODO check indentation
-    system = '''
-    You are a helpful research assistant that tries to answer the user's question based on the information provided from articles below. Always cite your sources. Respond using markdown.
-    '''
-    # TODO check indentation
-    user = f'''
-    CONTEXT:
-    {articles_str}
-
-    QUESTION:
-    {text}
-    '''
+    system = "You are a helpful research assistant that tries to answer the user's question based on the information provided from articles below. Do not ever use any information outside of the articles provided. Always cite your sources. Respond using markdown."
+    user = (
+        "<context>\n"
+        "{articles_str}\n"
+        "</context>\n"
+        "<question>\n"
+        "{text}\n"
+        "</question>\n"
+    ).format(articles_str=articles_str, text=text)
     print('user:', user)
     return run_llm(system, user)
     #
@@ -319,7 +316,9 @@ class ArticleDB:
         _logsql(sql)
         cursor = self.db.cursor()
         cursor.execute(sql, (timebias_alpha, timebias_alpha, query, limit))
-        return cursor.fetchall()
+        rows = cursor.fetchall()
+        columns = [desc[0] for desc in cursor.description]
+        return [dict(zip(columns, row)) for row in rows]
 
     @_catch_errors
     def add_url(self, url, recursive_depth=0, allow_dupes=False):
