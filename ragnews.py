@@ -11,11 +11,13 @@ from urllib.parse import urlparse
 import datetime
 import logging
 import re
+import random
+import time
 import sqlite3
 
 import groq
 
-from groq import Groq
+from groq import Groq, RateLimitError
 import os
 
 
@@ -39,12 +41,65 @@ client = Groq(
     api_key=os.environ.get("GROQ_API_KEY"),
 )
 
+def retry_with_exponential_backoff(
+    func,
+    initial_delay: float = 1,
+    exponential_base: float = 2,
+    jitter: bool = True,
+    max_retries: int = 10,
+    errors: tuple = (RateLimitError,),
+):
+    """
+    Retry a function with exponential backoff.
+
+    Args:
+        func (callable): The function to retry.
+        initial_delay (float): The initial delay before retrying.
+        exponential_base (float): The base for the exponential backoff.
+        jitter (bool): Whether to add randomness to the delay.
+        max_retries (int): The maximum number of retries.
+        errors (tuple): The exceptions to catch for retrying.
+
+    Returns:
+        callable: A wrapped function that retries with exponential backoff.
+    """
+    def wrapper(*args, **kwargs):
+        num_retries = 0
+        delay = initial_delay
+
+        while True:
+            try:
+                return func(*args, **kwargs)
+            except errors as e:
+                print("warning: rate limited, slowing down...")
+                num_retries += 1
+                if num_retries > max_retries:
+                    raise Exception(f"Maximum number of retries ({max_retries}) exceeded.")
+                delay *= exponential_base * (1 + jitter * random.random())
+                time.sleep(delay)
+            except Exception as e:
+                raise e
+
+    return wrapper
+
+@retry_with_exponential_backoff
+def completions_with_backoff(**kwargs):
+    """
+    Call the Groq API to create chat completions with retry logic.
+
+    Args:
+        **kwargs: Arbitrary keyword arguments for the API call.
+
+    Returns:
+        dict: The API response.
+    """
+    return client.chat.completions.create(**kwargs)
 
 def run_llm(system, user, model='llama-3.1-8b-instant', seed=None):
     '''
     This is a helper function for all the uses of LLMs in this file.
     '''
-    chat_completion = client.chat.completions.create(
+    chat_completion = completions_with_backoff(
         messages=[
             {
                 'role': 'system',
