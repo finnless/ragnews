@@ -19,6 +19,18 @@ from groq import Groq
 import os
 
 
+# Load environment variables from .env file
+def load_env_variables():
+    with open('.env') as f:
+        for line in f:
+            if line.strip() and not line.startswith('#'):
+                key, value = line.strip().split('=', 1)
+                os.environ[key] = value
+
+# Call the function to load environment variables
+load_env_variables()
+
+
 ################################################################################
 # LLM functions
 ################################################################################
@@ -28,7 +40,7 @@ client = Groq(
 )
 
 
-def run_llm(system, user, model='llama3-8b-8192', seed=None):
+def run_llm(system, user, model='llama-3.1-8b-instant', seed=None):
     '''
     This is a helper function for all the uses of LLMs in this file.
     '''
@@ -66,20 +78,15 @@ def extract_keywords(text, seed=None):
     this function extracts the keywords that will be used to perform the search for articles that will be used in RAG.
 
     >>> extract_keywords('Who is the current democratic presidential nominee?', seed=0)
-    'Joe candidate nominee presidential Democrat election primary TBD voting politics'
+    'democratic presidential nomination 2024 current candidate'
     >>> extract_keywords('What is the policy position of Trump related to illegal Mexican immigrants?', seed=0)
-    'Trump Mexican immigrants policy position illegal border control deportation walls'
+    'Trump immigration policy Mexico immigrants'
 
     Note that the examples above are passing in a seed value for deterministic results.
     In production, you probably do not want to specify the seed.
     '''
-
-    # FIXME:
-    # Implement this function.
-    # It's okay if you don't get the exact same keywords as me.
-    # You probably certainly won't because you probably won't come up with the exact same prompt as me.
-    # To make the test cases above pass,
-    # you'll have to modify them to be what the output of your prompt provides.
+    system = 'You are a professional google query rewriter. Your only job is to write search terms and keywords that will be used to search a database based on the question below. Return only a list of keywords separated by spaces, do no include any other text. Do not attempt to answer the question, just provide the keywords based only on the provided text.'
+    return run_llm(system, text, seed=seed)
 
 
 ################################################################################
@@ -218,20 +225,18 @@ class ArticleDB:
         Lowering the value of the timebias_alpha parameter will result in the time becoming more influential.
         The final ranking is computed by the FTS5 rank * timebias_alpha / (days since article publication + timebias_alpha).
         '''
-        
-        # FIXME:
-        # Implement this function.
-        # You do not need to concern yourself with the timebias_alpha parameter.
-        # (Although I encourage you to try!)
-        #
-        # HINT:
-        # The only thing my solution does is pass a SELECT statement to the sqlite3 database.
-        # The SELECT statement will need to use sqlite3's FTS5 syntax for full text search.
-        # If you need to review how to coordinate sqlite3 and python,
-        # there is an example in the __len__ method below.
-        # The details of the SELECT statement will be different
-        # (because the functions collect different information)
-        # but the outline of the python code is the same.
+        sql = '''
+        SELECT rowid, title, text, hostname, url, publish_date, rank,
+               rank * ? / (julianday('now') - julianday(publish_date) + ?) AS relevancy
+        FROM articles
+        WHERE articles MATCH ?
+        ORDER BY relevancy DESC
+        LIMIT ?;
+        '''
+        _logsql(sql)
+        cursor = self.db.cursor()
+        cursor.execute(sql, (timebias_alpha, timebias_alpha, query, limit))
+        return cursor.fetchall()
 
     @_catch_errors
     def add_url(self, url, recursive_depth=0, allow_dupes=False):
@@ -353,6 +358,7 @@ if __name__ == '__main__':
     parser.add_argument('--db', default='ragnews.db')
     parser.add_argument('--recursive_depth', default=0, type=int)
     parser.add_argument('--add_url', help='If this parameter is added, then the program will not provide an interactive QA session with the database.  Instead, the provided url will be downloaded and added to the database.')
+    parser.add_argument('--query', help='If this parameter is added, then the program will not provide an interactive QA session with the database. Instead, the provided query will be used to search the database and the results will be printed.')
     args = parser.parse_args()
 
     logging.basicConfig(
@@ -365,7 +371,8 @@ if __name__ == '__main__':
 
     if args.add_url:
         db.add_url(args.add_url, recursive_depth=args.recursive_depth, allow_dupes=True)
-
+    elif args.query:
+        pass # TODO: implement this rag()
     else:
         import readline
         while True:
