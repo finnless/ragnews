@@ -191,7 +191,6 @@ def rag(text, db):
     articles = db.find_articles(keywords, limit=5)
     if len(articles) == 0:
         return "No articles found"
-    # TODO handle no articles found
     # get english translations of the articles using translate_text() and add them to the articles object
     # 3. Construct a new user prompt that includes all of the articles and the original text.
     # create a formatted string that includes the title, publish_date, translation, urls of the articles
@@ -312,16 +311,18 @@ class ArticleDB:
         '''
         sql = '''
         SELECT rowid, title, text, hostname, url, publish_date, crawl_date, lang, en_translation, en_summary, rank,
-               -rank * ? / (julianday('now') - julianday(publish_date) + ?) AS relevancy
+               -rank * :timebias_alpha / (julianday('now') - julianday(publish_date) + :timebias_alpha) AS relevancy
         FROM articles
-        WHERE articles MATCH ?
+        WHERE articles MATCH :query
         ORDER BY relevancy DESC
-        LIMIT ?;
+        LIMIT :limit;
         '''
+        # Sanitize the query input
+        query = re.sub(r'[^a-zA-Z0-9\s]', '', query)
+
         _logsql(sql)
         cursor = self.db.cursor()
-        # TODO sql injection
-        cursor.execute(sql, (timebias_alpha, timebias_alpha, query, limit))
+        cursor.execute(sql, {'timebias_alpha': timebias_alpha, 'query': query, 'limit': limit})
         rows = cursor.fetchall()
         columns = [desc[0] for desc in cursor.description]
         return [dict(zip(columns, row)) for row in rows]
