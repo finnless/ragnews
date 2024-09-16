@@ -27,6 +27,22 @@ RAG News is a Python application that leverages the Groq LLM API and retrieval a
     pip install -r requirements.txt
     ```
 
+3. Install metahtml:
+    ```
+    cd metahtml
+
+    git init
+    git remote add origin https://github.com/mikeizbicki/metahtml
+    git config core.sparseCheckout true
+    echo '/*' > .git/info/sparse-checkout
+    echo '!/tests' >> .git/info/sparse-checkout
+    git pull origin master
+
+    pip install .
+
+    cd ..
+    ```
+
 ## Usage
 
 ### Running Interactive QA Sessions
@@ -35,6 +51,14 @@ To run an interactive QA session, simply run the script without additional param
 
 ```sh
 python ragnews.py
+```
+
+### Adding New Articles
+
+To add a new article to the database, use the `--add` parameter:
+
+```sh
+python ragnews.py --add "https://www.nytimes.com/2024/09/16/us/politics/trump-violence-assassination-attempt.html"
 ```
 
 ### Querying the Database
