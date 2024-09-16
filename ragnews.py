@@ -187,7 +187,6 @@ def rag(text, db):
 
     # 1. Extract keywords from the text.
     keywords = extract_keywords(text, seed=0)
-    print('keywords:', keywords)
     # 2. Use those keywords to find articles related to the text.
     articles = db.find_articles(keywords, limit=5)
     if len(articles) == 0:
@@ -213,7 +212,7 @@ def rag(text, db):
         ) for article in articles
     ])
     # 4. Pass the new prompt to the LLM and return the result.
-    system = "You are a helpful research assistant that tries to answer the user's question based on the information provided from articles below. Do not ever use any information outside of the articles provided. Always cite your sources. Respond using markdown."
+    system = "You are a helpful research assistant that tries to answer the user's question based on the information provided from articles below. Do not ever use any information outside of the articles provided. Only respond with the answer to the question. Use numbered citations like [1] [2] [3] at the end of sentences. Always respond with the full citation at the end of the answer like this:\nSources:\n[1] https://example.com/article1\n[2] https://example.com/article2\n[3] https://example.com/article3"
     user = (
         "<context>\n"
         "{articles_str}\n"
@@ -222,7 +221,6 @@ def rag(text, db):
         "{text}\n"
         "</question>\n"
     ).format(articles_str=articles_str, text=text)
-    print('user:', user)
     return run_llm(system, user)
     #
     # HINT:
