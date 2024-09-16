@@ -134,9 +134,37 @@ def rag(text, db):
     # Implement this function.
     # Recall that your RAG system should:
     # 1. Extract keywords from the text.
+    keywords = extract_keywords(text)
     # 2. Use those keywords to find articles related to the text.
+    articles = db.find_articles(keywords)
+    # get summaries of the articles using summarize_text() and add them to the articles object
+    for article in articles:
+        article['summary'] = summarize_text(article['text'])
     # 3. Construct a new user prompt that includes all of the articles and the original text.
+    # create a formatted string that includes the title, publish_datem summaries, urls of the articles
+    # TODO check indentation
+    article_template = '''
+    {title}
+    Publish Date: {publish_date}
+    Summary: {summary}
+    Source: {url}
+    '''
+    articles_str = '\n'.join([article_template.format(**article) for article in articles])
     # 4. Pass the new prompt to the LLM and return the result.
+    # TODO check indentation
+    system = '''
+    You are a helpful research assistant that tries to answer the user's question based on the information provided from articles below. Always cite your sources. Respond using markdown.
+    '''
+    # TODO check indentation
+    user = f'''
+    CONTEXT:
+    {articles_str}
+
+    QUESTION:
+    {text}
+    '''
+    print('user:', user)
+    return run_llm(system, user)
     #
     # HINT:
     # You will also have to write your own system prompt to use with the LLM.
@@ -372,7 +400,8 @@ if __name__ == '__main__':
     if args.add_url:
         db.add_url(args.add_url, recursive_depth=args.recursive_depth, allow_dupes=True)
     elif args.query:
-        pass # TODO: implement this rag()
+        output = rag(args.query, db)
+        print(output)
     else:
         import readline
         while True:
