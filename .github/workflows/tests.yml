@@ -30,5 +30,6 @@ jobs:
         #  Disabling because of https://github.com/mikeizbicki/cmc-csci181-languages/issues/12
         # and https://github.com/mikeizbicki/cmc-csci181-languages/issues/17
         # run: python -m doctest ragnews.py
-        run: python3 ragnews.py --query "Who is the current democratic presidential nominee?"
-        run: python3 ragnews.py --query "What is the policy position of Trump related to illegal Mexican immigrants?"
+        run: |
+          python3 ragnews.py --query "Who is the current democratic presidential nominee?"
+          python3 ragnews.py --query "What is the policy position of Trump related to illegal Mexican immigrants?"
