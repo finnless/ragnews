@@ -256,7 +256,7 @@ class ArticleDB:
     >>> articles[0]['title']
     'La creación de empleo defrauda en Estados Unidos en agosto y aviva el temor a una recesión | Economía | EL PAÍS'
     >>> articles[0].keys()
-    ['rowid', 'rank', 'title', 'publish_date', 'hostname', 'url', 'staleness', 'timebias', 'en_summary', 'text']
+    dict_keys(['rowid', 'title', 'text', 'hostname', 'url', 'publish_date', 'crawl_date', 'lang', 'en_translation', 'en_summary', 'rank', 'relevancy'])
     '''
 
     _TESTURLS = [
