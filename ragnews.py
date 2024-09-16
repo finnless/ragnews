@@ -96,7 +96,7 @@ def completions_with_backoff(**kwargs):
     """
     return client.chat.completions.create(**kwargs)
 
-def run_llm(system, user, model='llama-3.1-8b-instant', seed=None):
+def run_llm(system, user, model='llama-3.1-8b-instant', seed=None, temperature=None):
     '''
     This is a helper function for all the uses of LLMs in this file.
     '''
@@ -113,6 +113,7 @@ def run_llm(system, user, model='llama-3.1-8b-instant', seed=None):
         ],
         model=model,
         seed=seed,
+        temperature=temperature,
     )
     return chat_completion.choices[0].message.content
 
@@ -127,7 +128,7 @@ def translate_text(text):
     return run_llm(system, text)
 
 
-def extract_keywords(text, seed=None):
+def extract_keywords(text, seed=None, temperature=None):
     r'''
     This is a helper function for RAG.
     Given an input text,
@@ -142,7 +143,7 @@ def extract_keywords(text, seed=None):
     In production, you probably do not want to specify the seed.
     '''
     system = 'You are a professional google query rewriter. Your only job is to write search terms and keywords that will be used to search a database based on the question below. Return only a list of keywords separated by spaces, do no include any other text. Do not attempt to answer the question, just provide the keywords based only on the provided text.'
-    return run_llm(system, text, seed=seed)
+    return run_llm(system, text, seed=seed, temperature=temperature)
 
 
 ################################################################################
