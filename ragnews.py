@@ -318,8 +318,8 @@ class ArticleDB:
         ORDER BY relevancy DESC
         LIMIT :limit;
         '''
-        # Sanitize the query input
-        query = re.sub(r'[^a-zA-Z0-9\s]', '', query)
+        # Remove or escape special characters, but preserve Unicode word characters
+        query = re.sub(r'[^\w\s]', '', query, flags=re.UNICODE)
 
         _logsql(sql)
         cursor = self.db.cursor()
