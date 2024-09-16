@@ -190,6 +190,7 @@ def rag(text, db):
     print('keywords:', keywords)
     # 2. Use those keywords to find articles related to the text.
     articles = db.find_articles(keywords)
+    # TODO handle no articles found
     # get english translations of the articles using translate_text() and add them to the articles object
     # TODO add concurrency
     for article in articles:
@@ -303,11 +304,11 @@ class ArticleDB:
         Return a list of articles in the database that match the specified query.
 
         Lowering the value of the timebias_alpha parameter will result in the time becoming more influential.
-        The final ranking is computed by the FTS5 rank * timebias_alpha / (days since article publication + timebias_alpha).
+        The final ranking is computed by the FTS5 -rank (lower is more relevant) * timebias_alpha / (days since article publication + timebias_alpha).
         '''
         sql = '''
         SELECT rowid, title, text, hostname, url, publish_date, rank,
-               rank * ? / (julianday('now') - julianday(publish_date) + ?) AS relevancy
+               -rank * ? / (julianday('now') - julianday(publish_date) + ?) AS relevancy
         FROM articles
         WHERE articles MATCH ?
         ORDER BY relevancy DESC
@@ -315,6 +316,7 @@ class ArticleDB:
         '''
         _logsql(sql)
         cursor = self.db.cursor()
+        # TODO sql injection
         cursor.execute(sql, (timebias_alpha, timebias_alpha, query, limit))
         rows = cursor.fetchall()
         columns = [desc[0] for desc in cursor.description]
