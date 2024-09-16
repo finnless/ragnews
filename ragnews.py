@@ -23,11 +23,12 @@ import os
 
 # Load environment variables from .env file
 def load_env_variables():
-    with open('.env') as f:
-        for line in f:
-            if line.strip() and not line.startswith('#'):
-                key, value = line.strip().split('=', 1)
-                os.environ[key] = value
+    if os.path.exists('.env'):
+        with open('.env') as f:
+            for line in f:
+                if line.strip() and not line.startswith('#'):
+                    key, value = line.strip().split('=', 1)
+                    os.environ[key] = value
 
 # Call the function to load environment variables
 load_env_variables()
