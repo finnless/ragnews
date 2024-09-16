@@ -26,10 +26,22 @@ jobs:
         run: |
           python -m pip install --upgrade pip
           if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
+      - name: install metahtml
+        run: |
+          cd metahtml
+          git init
+          git remote add origin https://github.com/mikeizbicki/metahtml
+          git config core.sparseCheckout true
+          echo '/*' > .git/info/sparse-checkout
+          echo '!/tests' >> .git/info/sparse-checkout
+          git pull origin master
+          pip install .
+          cd ..
       - name: run tests
-        #  Disabling because of https://github.com/mikeizbicki/cmc-csci181-languages/issues/12
-        # and https://github.com/mikeizbicki/cmc-csci181-languages/issues/17
-        # run: python -m doctest ragnews.py
+        run: |
+          for i in {1..10}; do
+            python -m doctest ragnews.py && break
+          done
         run: |
           python3 ragnews.py --query "Who is the current democratic presidential nominee?"
           python3 ragnews.py --query "What is the policy position of Trump related to illegal Mexican immigrants?"
