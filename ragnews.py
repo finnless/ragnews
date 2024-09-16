@@ -186,10 +186,12 @@ def rag(text, db):
     '''
 
     # 1. Extract keywords from the text.
-    keywords = extract_keywords(text)
+    keywords = extract_keywords(text, seed=0)
     print('keywords:', keywords)
     # 2. Use those keywords to find articles related to the text.
-    articles = db.find_articles(keywords)
+    articles = db.find_articles(keywords, limit=5)
+    if len(articles) == 0:
+        return "No articles found"
     # TODO handle no articles found
     # get english translations of the articles using translate_text() and add them to the articles object
     # 3. Construct a new user prompt that includes all of the articles and the original text.
