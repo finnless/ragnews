@@ -192,20 +192,24 @@ def rag(text, db):
     articles = db.find_articles(keywords)
     # TODO handle no articles found
     # get english translations of the articles using translate_text() and add them to the articles object
-    # TODO add concurrency
-    for article in articles:
-        article['translation'] = translate_text(article['text'])
     # 3. Construct a new user prompt that includes all of the articles and the original text.
     # create a formatted string that includes the title, publish_date, translation, urls of the articles
     article_template = (
         "<article>\n"
         "  <title>{title}</title>\n"
         "  <publish_date>{publish_date}</publish_date>\n"
-        "  <text>{translation}</text>\n"
+        "  <text>{text}</text>\n"
         "  <source>{url}</source>\n"
         "</article>\n"
     )
-    articles_str = '\n'.join([article_template.format(**article) for article in articles])
+    articles_str = '\n'.join([
+        article_template.format(
+            title=article['title'],
+            publish_date=article['publish_date'],
+            text=article['en_translation'] if article.get('en_translation') is not None else article['text'],
+            url=article['url']
+        ) for article in articles
+    ])
     # 4. Pass the new prompt to the LLM and return the result.
     system = "You are a helpful research assistant that tries to answer the user's question based on the information provided from articles below. Do not ever use any information outside of the articles provided. Always cite your sources. Respond using markdown."
     user = (
@@ -307,7 +311,7 @@ class ArticleDB:
         The final ranking is computed by the FTS5 -rank (lower is more relevant) * timebias_alpha / (days since article publication + timebias_alpha).
         '''
         sql = '''
-        SELECT rowid, title, text, hostname, url, publish_date, rank,
+        SELECT rowid, title, text, hostname, url, publish_date, crawl_date, lang, en_translation, en_summary, rank,
                -rank * ? / (julianday('now') - julianday(publish_date) + ?) AS relevancy
         FROM articles
         WHERE articles MATCH ?
