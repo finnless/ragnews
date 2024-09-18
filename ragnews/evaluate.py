@@ -37,6 +37,9 @@ class RAGClassifier:
             return []
         db = ragnews.ArticleDB('ragnews.db')
         rag_query = re.sub(r'\[MASK\d+\]', '', masked_text).strip()
+        # TODO fix this up
+        masks = list(set(re.findall(r'\[MASK\d+\]', masked_text)))
+        rag_query = rag_query + '\n\nI am doing a Cloze test on the above text. Fill in the blanks. Who are: ' + ', '.join(masks)
         rag_result = ragnews.rag(rag_query, db)
         system = (
             'You are a helpful assistant that predicts the answers of the masked text '
@@ -90,8 +93,14 @@ if __name__ == '__main__':
 
     success = 0
     failure = 0
+    # TODO remove limit
+    data = data[:2]
     for d in data:
         prediction = model.predict(d['masked_text'])
+        print('predicted labels:', prediction)
+        print('actual labels:', d['masks'])
+        print('-' * 100)
+        print()
         if len(prediction) == len(d['masks']):
             if all(
                 mask.lower() in pred.lower() 
