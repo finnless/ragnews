@@ -175,7 +175,7 @@ def _catch_errors(func):
 ################################################################################
 
 
-def rag(text, db):
+def rag(question, db, keywords=None, system=None):
     '''
     This function uses retrieval augmented generation (RAG) to generate an LLM response to the input text.
     The db argument should be an instance of the `ArticleDB` class that contains the relevant documents to use.
@@ -187,9 +187,10 @@ def rag(text, db):
 
     '''
 
-    # 1. Extract keywords from the text.
-    keywords = extract_keywords(text, seed=0)
-    # 2. Use those keywords to find articles related to the text.
+    # 1. Extract keywords from the question.
+    if keywords is None:
+        keywords = extract_keywords(question, seed=0)
+    # 2. Use those keywords to find articles related to the question.
     articles = db.find_articles(keywords, limit=5)
     if len(articles) == 0:
         return "No articles found"
@@ -213,7 +214,8 @@ def rag(text, db):
         ) for article in articles
     ])
     # 4. Pass the new prompt to the LLM and return the result.
-    system = "You are a helpful research assistant that tries to answer the user's question based on the information provided from articles below. Do not ever use any information outside of the articles provided. Only respond with the answer to the question. Use numbered citations like [1] [2] [3] at the end of sentences. Always respond with the full citation at the end of the answer like this:\nSources:\n[1] https://example.com/article1\n[2] https://example.com/article2\n[3] https://example.com/article3"
+    if system is None:
+        system = "You are a helpful research assistant that tries to answer the user's question based on the information provided from articles below. Do not ever use any information outside of the articles provided. Only respond with the answer to the question. Use numbered citations like [1] [2] [3] at the end of sentences. Always respond with the full citation at the end of the answer like this:\nSources:\n[1] https://example.com/article1\n[2] https://example.com/article2\n[3] https://example.com/article3"
     user = (
         "<context>\n"
         "{articles_str}\n"
@@ -221,7 +223,7 @@ def rag(text, db):
         "<question>\n"
         "{text}\n"
         "</question>\n"
-    ).format(articles_str=articles_str, text=text)
+    ).format(articles_str=articles_str, text=question)
     return run_llm(system, user)
     #
     # HINT:
