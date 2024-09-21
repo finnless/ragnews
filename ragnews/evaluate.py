@@ -8,6 +8,8 @@ import re
 import json
 import logging
 
+from prompts import CLOZE_KEYWORDS_SYSTEM_A, CLOZE_RAG_SYSTEM_A
+
 # Set up logging
 logging.basicConfig(level=logging.INFO)
 # TODO add logging to everything
@@ -35,9 +37,7 @@ class RAGClassifier:
         >>> RAGClassifier._extract_cloze_keywords(text2)
         '"2024 democratic presumptive candidate"'
         '''
-        # TODO put OR between simmilar keywords
-        # TODO use the context from the predicate of the relevant sentence to create keywords most likely to return articles that mention the subject
-        system = 'You are helping a team do Cloze test. Your task is to write a search query that will retrieve relevant articles from a news database. Craft your query with only the most important keywords related to the masked text. Limit to 5 keywords at most. Return only search keywords, do not include any other text or numbers.'
+        system = CLOZE_KEYWORDS_SYSTEM_A
         return ragnews.run_llm(system, text, seed=seed, temperature=temperature)
 
     def predict(self, masked_text: str, attempt=0):
@@ -67,20 +67,7 @@ class RAGClassifier:
         example_mapping = ', '.join([f'[MASK{i}] is {example_names[i]}' for i in range(len(masks))])
         example_answers = '\n'.join(example_names[:len(masks)])
         
-        system = (
-            'You are a helpful assistant that predicts the answers of the masked text '
-            'based only on the context provided. '
-            'Masked text is in the format of {masks}. '
-            'The answers to choose from are: {valid_labels}. '
-            'Think through your answer step-by-step in no more than 50 words. '
-            'If your answer is a person, provide their last name ONLY. '
-            'As soon as you have a final answer for all masks, provide each answer on a new line at the end of your response inside a single <answer> tag like this:\n'
-            '...(your reasoning here)...\n'
-            'Therefore {example_mapping}.\n\n'
-            '<answer>\n'
-            '{example_answers}\n'
-            '</answer>'
-        )
+        system = CLOZE_RAG_SYSTEM_A
         system = system.format(masks=' '.join(masks),
                                example_mapping=example_mapping,
                                example_answers=example_answers,
