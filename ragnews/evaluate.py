@@ -62,32 +62,37 @@ class RAGClassifier:
         if not re.search(r'\[MASK\d+\]', masked_text):
             return []
         masks = list(set(re.findall(r'\[MASK\d+\]', masked_text)))
+        # Set dynamic example names depending on the number of masks
+        example_names = ['Alice', 'Bob', 'Eve', 'Mallory', 'Trent']
+        example_mapping = ', '.join([f'[MASK{i}] is {example_names[i]}' for i in range(len(masks))])
+        example_answers = '\n'.join(example_names[:len(masks)])
+        
         system = (
             'You are a helpful assistant that predicts the answers of the masked text '
             'based only on the context provided. '
             'Masked text is in the format of {masks}.'
             'Think through your answer step-by-step in no more than 50 words. '
             'If your answer is a person, provide their last name ONLY. '
-            'Once you have a final answer for each mask, provide each answer on a new line at the end of your response after a a divider line (---).\n'
-            'Example:\n'
-            '...\n'
-            'Therefore [MASK0] is Alice and [MASK1] is Bob.\n\n'
-            '---\n'
-            'Alice\n'
-            'Bob'
+            'As soon as you have a final answer for all masks, provide each answer on a new line at the end of your response inside a single <answer> tag like this:\n'
+            '...(your reasoning here)...\n'
+            f'Therefore {example_mapping}.\n\n'
+            '<answer>\n'
+            f'{example_answers}\n'
+            '</answer>'
         )
         system = system.format(masks=' '.join(masks))
         keywords = RAGClassifier._extract_cloze_keywords(masked_text)
-        output = ragnews.rag(masked_text, db, keywords=keywords, system=system)
+        output = ragnews.rag(masked_text, db, keywords=keywords, system=system, stop='</answer>')
         # if the output is not in the correct format, try again
-        if '---' not in output and attempt < 3:
+        if '<answer>' not in output and attempt < 3:
             logging.warning('error parsing output, trying again... attempt: %d', attempt)
             return self.predict(masked_text, attempt=attempt+1)
-        elif '---' not in output and attempt >= 3:
+        elif '<answer>' not in output and attempt >= 3:
             return []
         
         # output parser
-        output_lines = output.strip().split('---')
+        output_lines = output.strip().split('<answer>')
+        # TODO deal with </answer>
         results = [line for line in output_lines[-1].split('\n') if line.strip()]
 
         return results
