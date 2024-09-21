@@ -13,14 +13,14 @@ logging.basicConfig(level=logging.INFO)
 # TODO add logging to everything
 
 class RAGClassifier:
-    def __init__(self):
+    def __init__(self, valid_labels):
         '''
         Initialize the RAGClassifier. The __init__ function should take
         an input that specifies the valid labels to predict.
         The class should be a "predictor" following the scikit-learn interface.
         You will have to use the ragnews.rag function internally to perform the prediction.
         '''
-        pass
+        self.valid_labels = valid_labels
 
     def _extract_cloze_keywords(text, seed=0, temperature=None):
         r'''
@@ -43,7 +43,7 @@ class RAGClassifier:
     def predict(self, masked_text: str, attempt=0):
         '''
         Predict the labels of the documents.
-        >>> model = RAGClassifier()
+        >>> model = RAGClassifier(['Trump', 'Biden', 'Harris'])
         >>> model.predict('There is no mask token')
         []
         >>> model.predict('[MASK0] is the democratic nominee for president in 2024')
@@ -70,19 +70,25 @@ class RAGClassifier:
         system = (
             'You are a helpful assistant that predicts the answers of the masked text '
             'based only on the context provided. '
-            'Masked text is in the format of {masks}.'
+            'Masked text is in the format of {masks}. '
+            'The answers to choose from are: {valid_labels}. '
             'Think through your answer step-by-step in no more than 50 words. '
             'If your answer is a person, provide their last name ONLY. '
             'As soon as you have a final answer for all masks, provide each answer on a new line at the end of your response inside a single <answer> tag like this:\n'
             '...(your reasoning here)...\n'
-            f'Therefore {example_mapping}.\n\n'
+            'Therefore {example_mapping}.\n\n'
             '<answer>\n'
-            f'{example_answers}\n'
+            '{example_answers}\n'
             '</answer>'
         )
-        system = system.format(masks=' '.join(masks))
+        system = system.format(masks=' '.join(masks),
+                               example_mapping=example_mapping,
+                               example_answers=example_answers,
+                               valid_labels=self.valid_labels,
+                               )
         keywords = RAGClassifier._extract_cloze_keywords(masked_text)
-        output = ragnews.rag(masked_text, db, keywords=keywords, system=system, stop='</answer>')
+        # TODO make temperature and other hyperparameters tunable
+        output = ragnews.rag(masked_text, db, keywords=keywords, system=system, temperature=0.5, stop='</answer>')
         # if the output is not in the correct format, try again
         if '<answer>' not in output and attempt < 3:
             logging.warning('error parsing output, trying again... attempt: %d', attempt)
@@ -107,6 +113,7 @@ if __name__ == '__main__':
     with open(args.data, 'r') as f:
         data = [json.loads(line) for line in f]
 
+    # TODO make valid_labels dynamic. https://github.com/mikeizbicki/cmc-csci181-languages/issues/19
     model = RAGClassifier()
 
     success = 0
