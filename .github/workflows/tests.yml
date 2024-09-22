@@ -46,3 +46,21 @@ jobs:
         run: |
           python3 ragnews/__init__.py --query "Who is the current democratic presidential nominee?"
           python3 ragnews/__init__.py --query "What is the policy position of Trump related to illegal Mexican immigrants?"
+      - name: run evaluation test
+        run: |
+          python3 ragnews/evaluate.py --data "hairy-trumpet/data/wiki__page=2024_United_States_elections,recursive_depth=0__dpsize=paragraph,transformations=[canonicalize, group, rmtitles, split]" | tee output.log
+          success_ratio=$(grep 'success ratio:' output.log | awk '{print $3}')
+          if (( $(echo "$success_ratio > 0.7" | bc -l) )); then
+            echo "Test passed with success ratio $success_ratio"
+          else
+            echo "Test failed with success ratio $success_ratio"
+            exit 1
+      - name: create badge
+        run: |
+          success_ratio=$(grep 'success ratio:' output.log | awk '{print $3}')
+          curl -o badge.svg "https://img.shields.io/badge/success_ratio-${success_ratio}-brightgreen"
+      - name: upload badge
+        uses: actions/upload-artifact@v2
+        with:
+          name: success-ratio-badge
+          path: badge.svg

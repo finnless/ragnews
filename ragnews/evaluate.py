@@ -145,6 +145,13 @@ if __name__ == '__main__':
     print('failure: %d' % failure)
     print(tabulate(results_table, headers=['Index', 'Actual Labels', 'Predicted Labels', 'Result'], tablefmt='pretty'))
 
+    # Calculate and print the success ratio
+    total = success + failure
+    if total > 0:
+        success_ratio = success / total
+        print('success ratio: %.2f' % success_ratio)
+    else:
+        print('No data to evaluate')
 # for the querying, could send rewriter the question who is [MASK0] at the end
 
 '''

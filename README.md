@@ -1,6 +1,7 @@
 # RAG News
 
 [![Python application](https://github.com/finnless/ragnews/actions/workflows/tests.yml/badge.svg)](https://github.com/finnless/ragnews/actions/workflows/tests.yml)
+![Success Ratio](https://github.com/finnless/ragnews/raw/main/badge.svg)
 
 ## Overview
 
