@@ -7,6 +7,7 @@ import ragnews
 import re
 import json
 import logging
+from tabulate import tabulate
 
 from prompts import CLOZE_KEYWORDS_SYSTEM_A, CLOZE_RAG_SYSTEM_A
 
@@ -74,9 +75,9 @@ class RAGClassifier:
                                valid_labels=self.valid_labels,
                                )
         keywords = RAGClassifier._extract_cloze_keywords(masked_text)
-        logging.info('keywords:', keywords)
+        logging.info(f'keywords: {keywords}')
         # TODO make temperature and other hyperparameters tunable
-        output = ragnews.rag(masked_text, db, keywords=keywords, system=system, temperature=0.5, stop='</answer>')
+        output = ragnews.rag(masked_text, db, keywords=keywords, system=system, temperature=0.5, stop='</answer>', verbose=True)
         # TODO make this more robust so it doesn't break if the string is not exactly "No articles found"
         if 'No articles found' in output:
             logging.warning('no articles found, trying again... attempt: %d', attempt)
@@ -114,7 +115,11 @@ if __name__ == '__main__':
 
     success = 0
     failure = 0
-    for d in data:
+    results_table = []
+    # data = data[:5]
+
+    for i, d in enumerate(data):
+        logging.info(f'on example %d out of %d', i, len(data))
         prediction = model.predict(d['masked_text'])
         print('predicted labels:', prediction)
         print('actual labels:', d['masks'])
@@ -126,14 +131,19 @@ if __name__ == '__main__':
                 for mask, pred in zip(d['masks'], prediction)
             ):
                 success += 1
+                result = 'Success'
             else:
                 failure += 1
+                result = 'Failure'
         else:
             failure += 1
-    
+            result = 'Failure'
+        
+        results_table.append([i, d['masks'], prediction, result])
+
     print('success: %d' % success)
     print('failure: %d' % failure)
-
+    print(tabulate(results_table, headers=['Index', 'Actual Labels', 'Predicted Labels', 'Result'], tablefmt='pretty'))
 
 # for the querying, could send rewriter the question who is [MASK0] at the end
 
