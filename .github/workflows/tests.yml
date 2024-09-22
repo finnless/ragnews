@@ -59,6 +59,7 @@ jobs:
           else
             echo "Test failed with success ratio $success_ratio"
             exit 1
+          fi
       - name: create badge
         run: |
           success_ratio=$(grep 'success ratio:' output.log | awk '{print $3}')
