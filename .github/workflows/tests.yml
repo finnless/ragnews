@@ -22,10 +22,6 @@ jobs:
           python-version: ${{matrix.python}}
       - name: Install poppler
         run: sudo apt-get install -y poppler-utils
-      - name: install dependencies
-        run: |
-          python -m pip install --upgrade pip
-          if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
       - name: install metahtml
         run: |
           cd metahtml
@@ -37,6 +33,10 @@ jobs:
           git pull origin master
           pip install .
           cd ..
+      - name: install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
       # Disable doctest because non-deterministic
       # - name: run doctest
       #   run: |
