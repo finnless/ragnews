@@ -77,7 +77,7 @@ class RAGClassifier:
         keywords = RAGClassifier._extract_cloze_keywords(masked_text)
         logging.info(f'keywords: {keywords}')
         # TODO make temperature and other hyperparameters tunable
-        output = ragnews.rag(masked_text, db, keywords=keywords, system=system, temperature=0.5, stop='</answer>', verbose=True)
+        output = ragnews.rag(masked_text, db, keywords=keywords, system=system, temperature=0.5, stop='</answer>', max_articles_length=20000, verbose=True)
         # TODO make this more robust so it doesn't break if the string is not exactly "No articles found"
         if 'No articles found' in output:
             logging.warning('no articles found, trying again... attempt: %d', attempt)
