@@ -17,7 +17,7 @@ import sqlite3
 
 import groq
 
-from groq import Groq, RateLimitError
+from groq import Groq, RateLimitError, InternalServerError
 import os
 
 
@@ -48,7 +48,7 @@ def retry_with_exponential_backoff(
     exponential_base: float = 2,
     jitter: bool = True,
     max_retries: int = 10,
-    errors: tuple = (RateLimitError,),
+    errors: tuple = (RateLimitError, InternalServerError),
 ):
     """
     Retry a function with exponential backoff.
@@ -72,11 +72,11 @@ def retry_with_exponential_backoff(
             try:
                 return func(*args, **kwargs)
             except errors as e:
-                print("warning: rate limited, slowing down...")
                 num_retries += 1
                 if num_retries > max_retries:
                     raise Exception(f"Maximum number of retries ({max_retries}) exceeded.")
                 delay *= exponential_base * (1 + jitter * random.random())
+                print(f"warning: rate limited, slowing down... {delay} seconds")
                 time.sleep(delay)
             except Exception as e:
                 raise e
@@ -94,12 +94,24 @@ def completions_with_backoff(**kwargs):
     Returns:
         dict: The API response.
     """
+    # TODO handle different types of rate limits
     return client.chat.completions.create(**kwargs)
 
-def run_llm(system, user, model='llama-3.1-8b-instant', seed=None, temperature=None):
+def run_llm(system, user, model='llama-3.1-70b-versatile', seed=None, temperature=None, stop=None, verbose=False):
     '''
     This is a helper function for all the uses of LLMs in this file.
     '''
+    if verbose:
+        logging.info(f'-'*100)
+        logging.info(f'run_llm called with:\n'
+                     f'system: {system[:100]}\n'
+                     f'user: {user[:100]}\n...\n{user[-1000:]}\n'
+                     f'model: {model}\n'
+                     f'seed: {seed}\n'
+                     f'temperature: {temperature}\n'
+                     f'stop: {stop}'
+                     )
+    time.sleep(3)  # Add a delay between requests
     chat_completion = completions_with_backoff(
         messages=[
             {
@@ -114,8 +126,12 @@ def run_llm(system, user, model='llama-3.1-8b-instant', seed=None, temperature=N
         model=model,
         seed=seed,
         temperature=temperature,
+        stop=stop,
     )
-    return chat_completion.choices[0].message.content
+    result = chat_completion.choices[0].message.content
+    if verbose:
+        logging.info(f'run_llm result:\n{result}')
+    return result
 
 
 def summarize_text(text, seed=None):
@@ -175,7 +191,7 @@ def _catch_errors(func):
 ################################################################################
 
 
-def rag(question, db, keywords=None, system=None):
+def rag(question, db, keywords=None, system=None, temperature=None, stop=None, max_articles_length=None, verbose=False):
     '''
     This function uses retrieval augmented generation (RAG) to generate an LLM response to the input text.
     The db argument should be an instance of the `ArticleDB` class that contains the relevant documents to use.
@@ -194,6 +210,21 @@ def rag(question, db, keywords=None, system=None):
     articles = db.find_articles(keywords, limit=5)
     if len(articles) == 0:
         return "No articles found"
+    # TODO. switch this to detecting long articles when retrieved and returning summary instead
+    if max_articles_length is not None:
+        # Check if the combined length of all articles is greater than x characters
+        combined_length = sum(
+            len(article['en_translation'] if article.get('en_translation') is not None else article['text'])
+            for article in articles
+        )
+        logging.info(f'combined_length: {combined_length}')
+        while combined_length > max_articles_length and articles:
+            # Remove the last article from the articles list
+            removed_article = articles.pop()
+            combined_length -= len(
+                removed_article['en_translation'] if removed_article.get('en_translation') is not None else removed_article['text']
+            )
+            logging.info(f'removed_article. new combined_length: {combined_length}')
     # get english translations of the articles using translate_text() and add them to the articles object
     # 3. Construct a new user prompt that includes all of the articles and the original text.
     # create a formatted string that includes the title, publish_date, translation, urls of the articles
@@ -224,7 +255,7 @@ def rag(question, db, keywords=None, system=None):
         "{text}\n"
         "</question>\n"
     ).format(articles_str=articles_str, text=question)
-    return run_llm(system, user)
+    return run_llm(system, user, temperature=temperature, stop=stop, verbose=verbose)
     #
     # HINT:
     # You will also have to write your own system prompt to use with the LLM.
@@ -321,6 +352,7 @@ class ArticleDB:
         ORDER BY relevancy DESC
         LIMIT :limit;
         '''
+        # TODO Consider term relevancy reranking https://pastebin.com/raw/pW4dP2Qc
         # Remove or escape special characters, but preserve Unicode word characters
         query = re.sub(r'[^\w\s]', '', query, flags=re.UNICODE)
 
