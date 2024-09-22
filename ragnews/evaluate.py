@@ -24,17 +24,17 @@ class RAGClassifier:
         '''
         self.valid_labels = valid_labels
 
-    def _extract_cloze_keywords(text, seed=0, temperature=None):
+    def _extract_cloze_keywords(text, seed=None, temperature=None):
         r'''
         This is a helper function for RAG with the Cloze test.
         Given an input text,
         this function extracts the keywords that will be used to perform the search for articles that will be used in RAG.
 
         >>> text1 = """On July 13, 2024, during a campaign rally in Butler, Pennsylvania, presidential candidate [MASK0] was shot at in a failed assassination attempt. The gunfire caused minor damage to [MASK0]'s upper right ear, while one spectator was killed and two others were critically injured. On September 15, 2024, the security detail of [MASK0] spotted an armed man while the former president was touring his golf course in West Palm Beach. They opened fire on the suspect, which fled on a vehicle and was later captured thanks to the contribution of an eyewitness. In the location where the suspect was spotted, the police retrieved an AK-47-style rifle with a scope, two rucksacks and a GoPro."""
-        >>> RAGClassifier._extract_cloze_keywords(text1)
+        >>> RAGClassifier._extract_cloze_keywords(text1, seed=0)
         'campaign, shooting, Pennsylvania, presidential, assassination'
         >>> text2 = """After a survey by the Associated Press of Democratic delegates on July 22, 2024, [MASK0] became the new presumptive candidate for the Democratic party, a day after declaring her candidacy. She would become the official nominee on August 5 following a virtual roll call of delegates."""
-        >>> RAGClassifier._extract_cloze_keywords(text2)
+        >>> RAGClassifier._extract_cloze_keywords(text2, seed=0)
         '"2024 democratic presumptive candidate"'
         '''
         system = CLOZE_KEYWORDS_SYSTEM_A
@@ -74,8 +74,13 @@ class RAGClassifier:
                                valid_labels=self.valid_labels,
                                )
         keywords = RAGClassifier._extract_cloze_keywords(masked_text)
+        logging.info('keywords:', keywords)
         # TODO make temperature and other hyperparameters tunable
         output = ragnews.rag(masked_text, db, keywords=keywords, system=system, temperature=0.5, stop='</answer>')
+        # TODO make this more robust so it doesn't break if the string is not exactly "No articles found"
+        if 'No articles found' in output:
+            logging.warning('no articles found, trying again... attempt: %d', attempt)
+            return self.predict(masked_text, attempt=attempt+1)
         # if the output is not in the correct format, try again
         if '<answer>' not in output and attempt < 3:
             logging.warning('error parsing output, trying again... attempt: %d', attempt)
@@ -100,13 +105,15 @@ if __name__ == '__main__':
     with open(args.data, 'r') as f:
         data = [json.loads(line) for line in f]
 
-    # TODO make valid_labels dynamic. https://github.com/mikeizbicki/cmc-csci181-languages/issues/19
-    model = RAGClassifier()
+    labels = set()
+    with open(args.data) as fin:
+        for i, line in enumerate(fin):
+            dp = json.loads(line)
+            labels.update(dp['masks'])
+    model = RAGClassifier(labels)
 
     success = 0
     failure = 0
-    # TODO remove limit
-    data = data[:2]
     for d in data:
         prediction = model.predict(d['masked_text'])
         print('predicted labels:', prediction)
@@ -124,8 +131,8 @@ if __name__ == '__main__':
         else:
             failure += 1
     
-    logging.debug('success: %d', success)
-    logging.debug('failure: %d', failure)
+    print('success: %d' % success)
+    print('failure: %d' % failure)
 
 
 # for the querying, could send rewriter the question who is [MASK0] at the end
