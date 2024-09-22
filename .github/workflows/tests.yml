@@ -60,7 +60,7 @@ jobs:
           success_ratio=$(grep 'success ratio:' output.log | awk '{print $3}')
           curl -o badge.svg "https://img.shields.io/badge/success_ratio-${success_ratio}-brightgreen"
       - name: upload badge
-        uses: actions/upload-artifact@v2
+        uses: actions/upload-artifact@v4
         with:
           name: success-ratio-badge
           path: badge.svg
