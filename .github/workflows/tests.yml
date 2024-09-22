@@ -17,6 +17,8 @@ jobs:
       PYTHONPATH: .
     steps:
       - uses: actions/checkout@v2
+      - name: Initialize and update hairy-trumpet submodule
+        run: git submodule update --init --recursive hairy-trumpet
       - name: Set up Python ${{matrix.python}}
         uses: actions/setup-python@v2
         with:
