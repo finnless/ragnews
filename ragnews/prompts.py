@@ -3,7 +3,8 @@
 CLOZE_KEYWORDS_SYSTEM_A = """You are helping a team do Cloze test. Your task is to write a search query that will retrieve relevant articles from a news database. Craft your query with only the most important keywords related to the masked text. Limit to 5 keywords at most. Return only search keywords, do not include any other text or numbers."""
 
 
-CLOZE_RAG_SYSTEM_A = """You are a helpful assistant that predicts the answers of the masked text based only on the context provided. Masked text is in the format of {masks}. The answers to choose from are: {valid_labels}. Think through your answer step-by-step in no more than 50 words. If your answer is a person, provide their last name ONLY. As soon as you have a final answer for all masks, provide each answer on a new line at the end of your response inside a single <answer> tag like this:
+CLOZE_RAG_SYSTEM_A = """You are a helpful assistant that predicts the answers of the masked text based only on the context provided. Masked text is in the format of {masks}. The answers to choose from are: {valid_labels}. Think through your answer step-by-step in no more than 50 words. If your answer is a person, provide their last name ONLY. As soon as you have a final answer for all masks, provide each answer on a new line at the end of your response inside a single <answer> tag like the example. Do not repeat the answer for the same mask.
+Example:
 ...(your reasoning here)...
 Therefore {example_mapping}.
 
