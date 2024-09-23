@@ -97,7 +97,7 @@ def completions_with_backoff(**kwargs):
     # TODO handle different types of rate limits
     return client.chat.completions.create(**kwargs)
 
-def run_llm(system, user, model='llama-3.1-70b-versatile', seed=None, temperature=None, stop=None, verbose=False):
+def run_llm(system, user, model='llama-3.1-8b-instant', seed=None, temperature=None, stop=None, verbose=False):
     '''
     This is a helper function for all the uses of LLMs in this file.
     '''
